@@ -15,7 +15,6 @@ import { User } from './users/user.entity';
       password: 'jmcr0612',
       database: 'usersDB',
       entities: [User],
-      synchronize: true,
     }),
     UsersModule,
   ],

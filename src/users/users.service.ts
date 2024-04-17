@@ -7,24 +7,25 @@ import { CreateUserDto } from './dto/create-user.dto';
 //Se hace la operación primero en Services, y luego la solicitud http en controller
 @Injectable()
 export class UsersService {
+  constructor(
+    @InjectRepository(User) private userRepository: Repository<User>,
+  ) {}
 
-    constructor(@InjectRepository(User) private userRepository: Repository<User>) {}
+  createUser(user: CreateUserDto) {
+    const newUser = this.userRepository.create(user);
+    return this.userRepository.save(newUser);
+  }
+  //Compara lo que espera el repositorio (user.entity) con lo que esperamos recibir dto
 
-    createUser(user: CreateUserDto) {
-        const newUser = this.userRepository.create(user)
-        return this.userRepository.save(newUser)
-    }
-    //Compara lo que espera el repositorio (user.entity) con lo que esperamos recibir dto
+  getUsers() {
+    return this.userRepository.find();
+  }
 
-    getUsers() {
-        return this.userRepository.find()
-    }
-
-    getUser(email: string) {
-        return this.userRepository.findOne({
-            where: {
-                email
-            }
-        })
-    }
+  getUser(email: string) {
+    return this.userRepository.findOne({
+      where: {
+        email,
+      },
+    });
+  }
 }
