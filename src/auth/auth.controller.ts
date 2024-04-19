@@ -18,8 +18,15 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  singIn(@Body() signInDto: SingInDto) {
-    return this.authService.signIn(signInDto.email, signInDto.pass);
+  async singIn(@Body() signInDto: SingInDto) {
+    const token = await this.authService.signIn(signInDto.email, signInDto.pass);
+    console.log(token);
+    return token;
+  }
+
+  @Get('login')
+  async getSaludo() {
+    return this.authService.getSaludo
   }
 
   @UseGuards(AuthGuard)

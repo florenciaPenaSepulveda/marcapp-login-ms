@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { jwtConstants } from './constant';
 
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -31,4 +32,8 @@ export class AuthService {
       }),
     };
   }
+
+  getSaludo() {
+    return "Hola"
+  };
 }
