@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, NotFoundException } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
@@ -10,8 +10,13 @@ export class UsersController {
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
   @Post('register')
-  createUser(@Body() newUser: CreateUserDto): Promise<User> {
-    return this.usersService.createUser(newUser);
+  async createUser(@Body() newUser: CreateUserDto): Promise<User> | undefined {
+    const user = await this.usersService.getUser(newUser.email);
+    if(!user) {
+      return this.usersService.createUser(newUser);
+    } else {
+      throw new ConflictException('El correo electrónico ya está registrado')
+    }
   }
 
   @Get()

@@ -20,10 +20,12 @@ import { AuthModule } from './auth/auth.module';
       password: '1234',
       database: 'usersDB',
       entities: [User],
+      //synchronize: true,
     }),
     UsersModule,
     MailerModule,
     CorreosModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],
