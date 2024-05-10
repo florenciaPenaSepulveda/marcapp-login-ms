@@ -31,11 +31,12 @@ export class UsersService {
     return this.userRepository.find();
   }
 
-  getUser(email: string) {
-    return this.userRepository.findOne({
+   getUser(email: string) {
+    console.log("service ", email)
+    return  this.userRepository.findOne({ 
       where: {
-        email,
-      },
-    });
+        email: email
+      }
+     })
   }
 }
