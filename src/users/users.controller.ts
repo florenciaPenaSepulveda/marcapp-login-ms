@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Patch, Req } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
 
 @Controller('users')
 export class UsersController {
+  authService: any;
   constructor(private usersService: UsersService) {}
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
@@ -24,4 +25,6 @@ export class UsersController {
     console.log(typeof email);
     return this.usersService.getUser(email);
   }
+
 }
+

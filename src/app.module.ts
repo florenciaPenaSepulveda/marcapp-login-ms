@@ -4,6 +4,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { User } from './users/user.entity';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { CorreosService } from './correos/correos.service';
+import { CorreosModule } from './correos/correos.module';
+
 
 @Module({
   imports: [
@@ -12,11 +16,13 @@ import { User } from './users/user.entity';
       host: '127.0.0.1',
       port: 3306,
       username: 'root',
-      password: 'jmcr0612',
+      password: '1234',
       database: 'usersDB',
       entities: [User],
     }),
     UsersModule,
+    MailerModule,
+    CorreosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

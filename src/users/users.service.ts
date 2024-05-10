@@ -7,9 +7,19 @@ import { CreateUserDto } from './dto/create-user.dto';
 //Se hace la operación primero en Services, y luego la solicitud http en controller
 @Injectable()
 export class UsersService {
+  cambiarContraseña(idUsuario: number, nuevaContrasena: string) {
+    throw new Error('Method not implemented.');
+  }
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
   ) {}
+
+  async updateUser(user: User): Promise<User> {
+    // Implement logic to update the user in the database
+    // ...
+
+    return user; // Return the updated user object
+  }
 
   createUser(user: CreateUserDto) {
     const newUser = this.userRepository.create(user);
