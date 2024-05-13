@@ -6,7 +6,6 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { jwtConstants } from './constant';
 
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -30,6 +29,20 @@ export class AuthService {
       }),
     };
   }
+
+  verifyToken(t: string) {
+    try {
+      console.log(t);
+      this.jwtService.verify(t, jwtConstants);
+      console.log("Buen token");
+      return true;
+    } catch (err) {
+      console.log("Mal token")
+      return false;
+    }
+  }
+
+  
 
   
 }

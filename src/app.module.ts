@@ -24,7 +24,7 @@ import { AuthModule } from './auth/auth.module';
     UsersModule,
     //MailerModule,
     //CorreosModule,
-    AuthModule
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

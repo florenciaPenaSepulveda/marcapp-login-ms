@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
   Request,
+  Param,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
@@ -22,6 +23,11 @@ export class AuthController {
     const token = await this.authService.signIn(signInDto.email, signInDto.pass);
     console.log(token);
     return token;
+  }
+
+  @Get(':t')
+  async verToken(@Param('t') t: string): Promise<Boolean> {
+    return this.authService.verifyToken(t);
   }
 
   @UseGuards(AuthGuard)
