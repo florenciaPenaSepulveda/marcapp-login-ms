@@ -18,7 +18,6 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  
   async singIn(@Body() signInDto: SingInDto) {
     const token = await this.authService.signIn(signInDto.email, signInDto.pass);
     console.log(token);

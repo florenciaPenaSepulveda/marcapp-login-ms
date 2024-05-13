@@ -32,7 +32,6 @@ export class UsersService {
   }
 
    getUser(email: string) {
-    console.log("service ", email)
     return  this.userRepository.findOne({ 
       where: {
         email: email

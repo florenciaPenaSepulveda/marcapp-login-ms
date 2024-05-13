@@ -5,7 +5,6 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { User } from './users/user.entity';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { CorreosService } from './correos/correos.service';
 import { CorreosModule } from './correos/correos.module';
 
 import { AuthModule } from './auth/auth.module';
@@ -17,14 +16,14 @@ import { AuthModule } from './auth/auth.module';
       host: '127.0.0.1',
       port: 3306,
       username: 'root',
-      password: '1234',
+      password: 'jmcr0612',
       database: 'usersDB',
       entities: [User],
       synchronize: true,
     }),
     UsersModule,
-    MailerModule,
-    CorreosModule,
+    //MailerModule,
+    //CorreosModule,
     AuthModule
   ],
   controllers: [AppController],
