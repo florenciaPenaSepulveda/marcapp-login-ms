@@ -6,7 +6,6 @@ import { UsersModule } from './users/users.module';
 import { User } from './users/user.entity';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { CorreosModule } from './correos/correos.module';
-
 import { AuthModule } from './auth/auth.module';
 
 @Module({

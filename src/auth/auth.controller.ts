@@ -12,6 +12,7 @@ import {
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
 import { SingInDto } from 'src/users/dto/sign-in.dto';
+import { JwtPayload } from 'jwt-decode';
 
 @Controller('auth')
 export class AuthController {
@@ -20,7 +21,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async singIn(@Body() signInDto: SingInDto) {
-    const token = await this.authService.signIn(signInDto.email, signInDto.pass);
+    const token = await this.authService.signIn(
+      signInDto.email,
+      signInDto.pass,
+    );
     console.log(token);
     return token;
   }
@@ -36,4 +40,8 @@ export class AuthController {
     return req.user;
   }
 
+  @Post(':t')
+  getId(@Param('t') t: string): String {
+    return this.authService.decodeToken(t);
+  }
 }

@@ -15,7 +15,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
       },
     }),
   ],
-  controllers: [CorreosController],  
+  controllers: [CorreosController],
   providers: [CorreosService],
   exports: [CorreosService],
 })

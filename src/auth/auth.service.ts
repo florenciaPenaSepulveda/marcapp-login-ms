@@ -1,10 +1,8 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { jwtConstants } from './constant';
+import { JwtPayload, jwtDecode } from 'jwt-decode';
 
 @Injectable()
 export class AuthService {
@@ -34,15 +32,17 @@ export class AuthService {
     try {
       console.log(t);
       this.jwtService.verify(t, jwtConstants);
-      console.log("Buen token");
+      console.log('Buen token');
       return true;
     } catch (err) {
-      console.log("Mal token")
+      console.log('Mal token');
       return false;
     }
   }
 
-  
-
-  
+  decodeToken(t: string) {
+    const decodeT = jwtDecode<JwtPayload>(t).sub;
+    console.log(decodeT);
+    return decodeT;
+  }
 }
