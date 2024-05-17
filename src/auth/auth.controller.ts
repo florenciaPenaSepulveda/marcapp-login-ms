@@ -29,15 +29,16 @@ export class AuthController {
     return token;
   }
 
+  @UseGuards(AuthGuard)
+  @Post('profile')
+  getProfile(@Request() req) {
+    console.log("Llegó a profile")
+    return req.user;
+  }
+  
   @Get(':t')
   async verToken(@Param('t') t: string): Promise<Boolean> {
     return this.authService.verifyToken(t);
-  }
-
-  @UseGuards(AuthGuard)
-  @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
   }
 
   @Post(':t')
