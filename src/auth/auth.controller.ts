@@ -32,7 +32,6 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Post('profile')
   getProfile(@Request() req) {
-    console.log("Llegó a profile")
     return req.user;
   }
   
