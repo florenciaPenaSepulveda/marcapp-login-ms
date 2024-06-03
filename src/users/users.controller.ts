@@ -6,10 +6,18 @@ import {
   Post,
   NotFoundException,
   ConflictException,
+  Patch,
+  UseGuards,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto } from '../dto/create-user.dto';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { Roles } from 'src/enum/roles.decorator';
+import { Role } from 'src/enum/user-type.enum';
+import { Admin } from 'typeorm';
+import { RolesGuard } from 'src/auth/guards/role.guard';
+import { AuthGuard } from 'src/auth/guards/auth.guard';
 
 @Controller('users')
 export class UsersController {
@@ -17,9 +25,10 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
-  @Post('register')
+  @Post('/register')
   async createUser(@Body() newUser: CreateUserDto): Promise<User> | undefined {
     const user = await this.usersService.getUser(newUser.email);
+    console.log(JSON.stringify(user));
     if (!user) {
       return this.usersService.createUser(newUser);
     } else {
@@ -27,13 +36,20 @@ export class UsersController {
     }
   }
 
-  @Get()
-  getUsers(): Promise<User[]> {
-    console.log(JSON.stringify(this.usersService.getUsers));
-    return this.usersService.getUsers();
+  @Patch('/:id')
+  async modifyUser(@Param('id') id: number, @Body() newValues: UpdateUserDto): Promise<User> {
+    return this.usersService.updateUser(id, newValues); 
   }
 
-  @Get(':email')
+
+  @Patch('/admin/:id/role')
+  async addPrivileges(
+    @Param('id') id: number,
+    @Body('role') role: Role,) {    
+    await this.usersService.addPrivileges(id, role);
+  }
+
+  @Get('/:email')
   async getUser(@Param('email') email: string): Promise<User> {
     const user = await this.usersService.getUser(email);
     console.log(email);
@@ -45,4 +61,14 @@ export class UsersController {
     }
     return user;
   }
+  
+  
+  @Get() 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getUsers(): Promise<User[]> {
+    console.log(Role.ADMIN);
+    return await this.usersService.getUsers();
+  }
+  
 }

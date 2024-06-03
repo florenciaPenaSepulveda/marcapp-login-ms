@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { Repository } from 'typeorm';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { Role } from 'src/enum/user-type.enum';
 //BIBLIOTECA QUE SE COMUNICA CON LA BASE DE DATOS PARA HACER OPERACIONES
 //Se hace la operación primero en Services, y luego la solicitud http en controller
 @Injectable()
@@ -14,11 +16,13 @@ export class UsersService {
     @InjectRepository(User) private userRepository: Repository<User>,
   ) {}
 
-  async updateUser(user: User): Promise<User> {
-    // Implement logic to update the user in the database
-    // ...
+  async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<User> {
+    await this.userRepository.update(id, updateUserDto);
+    return this.userRepository.findOne({ where: { id } });
+  }
 
-    return user; // Return the updated user object
+  async addPrivileges(id: number, role: Role) {
+    await this.userRepository.update(id, {type: role})
   }
 
   createUser(user: CreateUserDto) {
@@ -35,6 +39,14 @@ export class UsersService {
     return this.userRepository.findOne({
       where: {
         email: email,
+      },
+    });
+  }
+
+  async getUserById(id: number) {
+    return this.userRepository.findOne({
+      where: {
+        id: id,
       },
     });
   }

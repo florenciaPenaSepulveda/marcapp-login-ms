@@ -10,8 +10,8 @@ import {
   Param,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthGuard } from './auth.guard';
-import { SingInDto } from 'src/users/dto/sign-in.dto';
+import { AuthGuard } from './guards/auth.guard';
+import { SingInDto } from 'src/dto/sign-in.dto';
 import { JwtPayload } from 'jwt-decode';
 
 @Controller('auth')
@@ -35,6 +35,7 @@ export class AuthController {
     return req.user;
   }
   
+  
   @Get(':t')
   async verToken(@Param('t') t: string): Promise<Boolean> {
     return this.authService.verifyToken(t);
@@ -44,4 +45,5 @@ export class AuthController {
   getId(@Param('t') t: string): String {
     return this.authService.decodeToken(t);
   }
+  
 }
