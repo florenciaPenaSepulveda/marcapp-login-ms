@@ -61,7 +61,11 @@ export class UsersController {
     }
     return user;
   }
-  
+
+  @Get('/obtain/all') 
+  async getAll(): Promise<User[]> {
+    return await this.usersService.getUsers();
+  }
   
   @Get() 
   @UseGuards(AuthGuard, RolesGuard)
@@ -71,9 +75,5 @@ export class UsersController {
     return await this.usersService.getUsers();
   }
 
-  @Get('all') 
-  async getAll(): Promise<User[]> {
-    return await this.usersService.getUsers();
-  }
   
 }
