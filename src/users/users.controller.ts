@@ -49,7 +49,20 @@ export class UsersController {
     await this.usersService.addPrivileges(id, role);
   }
 
-  @Get('/:email')
+  @Post('/all') 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getUsers(): Promise<User[]> {
+    console.log(Role.ADMIN);
+    return await this.usersService.getUsers();
+  }
+
+  @Get('/obtain/all') 
+  async getAll(): Promise<User[]> {
+    return await this.usersService.getUsers();
+  }
+
+  @Get('/email/:email')
   async getUser(@Param('email') email: string): Promise<User> {
     const user = await this.usersService.getUser(email);
     console.log(email);
@@ -61,18 +74,4 @@ export class UsersController {
     }
     return user;
   }
-
-  @Get('/obtain/all') 
-  async getAll(): Promise<User[]> {
-    return await this.usersService.getUsers();
-  }
-  
-  @Get() 
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  async getUsers(): Promise<User[]> {
-    console.log(Role.ADMIN);
-    return await this.usersService.getUsers();
-  }
-
 }

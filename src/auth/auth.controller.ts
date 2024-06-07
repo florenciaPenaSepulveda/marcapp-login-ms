@@ -42,7 +42,6 @@ export class AuthController {
   @Roles(Role.ADMIN)
   @Get('admin/role')
   isAdmin(@Request() req) {
-    
     console.log(req.user);
     return true;
   }
