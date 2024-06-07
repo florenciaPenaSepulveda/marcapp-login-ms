@@ -75,5 +75,6 @@ export class UsersController {
   async getAll(): Promise<User[]> {
     return await this.usersService.getUsers();
   }
+
   
 }
