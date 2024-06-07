@@ -70,5 +70,11 @@ export class UsersController {
     console.log(Role.ADMIN);
     return await this.usersService.getUsers();
   }
+
+  @Get('all') 
+  async getAll(): Promise<User[]> {
+    return await this.usersService.getUsers();
+  }
+
   
 }

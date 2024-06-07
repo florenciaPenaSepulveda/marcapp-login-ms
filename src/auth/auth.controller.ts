@@ -13,6 +13,9 @@ import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { SingInDto } from 'src/dto/sign-in.dto';
 import { JwtPayload } from 'jwt-decode';
+import { RolesGuard } from './guards/role.guard';
+import { Roles } from 'src/enum/roles.decorator';
+import { Role } from 'src/enum/user-type.enum';
 
 @Controller('auth')
 export class AuthController {
@@ -34,6 +37,16 @@ export class AuthController {
   getProfile(@Request() req) {
     return req.user;
   }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Get('admin/role')
+  isAdmin(@Request() req) {
+    
+    console.log(req.user);
+    return true;
+  }
+  
   
   
   @Get(':t')
