@@ -18,10 +18,11 @@ import { Role } from 'src/enum/user-type.enum';
 import { Admin } from 'typeorm';
 import { RolesGuard } from 'src/auth/guards/role.guard';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { AuthService } from 'src/auth/auth.service';
 
 @Controller('users')
 export class UsersController {
-  authService: any;
+  authService: AuthService;
   constructor(private usersService: UsersService) {}
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
@@ -42,14 +43,27 @@ export class UsersController {
   }
 
 
-  @Patch('/admin/:id/role')
+  @Patch('/admin/role/:id')
   async addPrivileges(
     @Param('id') id: number,
     @Body('role') role: Role,) {    
     await this.usersService.addPrivileges(id, role);
   }
 
-  @Get('/:email')
+  @Post('/all') 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  async getUsers(): Promise<User[]> {
+    console.log(Role.ADMIN);
+    return await this.usersService.getUsers();
+  }
+
+  @Get('/obtain/all') 
+  async getAll(): Promise<User[]> {
+    return await this.usersService.getUsers();
+  }
+
+  @Get('/email/:email')
   async getUser(@Param('email') email: string): Promise<User> {
     const user = await this.usersService.getUser(email);
     console.log(email);
@@ -61,18 +75,4 @@ export class UsersController {
     }
     return user;
   }
-
-  @Get('/obtain/all') 
-  async getAll(): Promise<User[]> {
-    return await this.usersService.getUsers();
-  }
-  
-  @Get() 
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  async getUsers(): Promise<User[]> {
-    console.log(Role.ADMIN);
-    return await this.usersService.getUsers();
-  }
-
 }
