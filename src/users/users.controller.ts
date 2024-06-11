@@ -18,10 +18,11 @@ import { Role } from 'src/enum/user-type.enum';
 import { Admin } from 'typeorm';
 import { RolesGuard } from 'src/auth/guards/role.guard';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { AuthService } from 'src/auth/auth.service';
 
 @Controller('users')
 export class UsersController {
-  authService: any;
+  authService: AuthService;
   constructor(private usersService: UsersService) {}
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
@@ -42,7 +43,7 @@ export class UsersController {
   }
 
 
-  @Patch('/admin/:id/role')
+  @Patch('/admin/role/:id')
   async addPrivileges(
     @Param('id') id: number,
     @Body('role') role: Role,) {    
