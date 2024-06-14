@@ -40,7 +40,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  @Get('admin/role')
+  @Post('admin/role')
   isAdmin(@Request() req) {
     console.log(req.user);
     return true;
