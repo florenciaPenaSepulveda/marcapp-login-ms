@@ -1,12 +1,12 @@
-import { IsEmail, Matches, MaxLength, MinLength } from "class-validator";
+import * as validator from "class-validator";
 
 export class SingInDto {
-  @IsEmail()
+  @validator.IsEmail({}, {message: 'Email must be valid'})
   email: string;
 
-  @MinLength(8)
-  @MaxLength(16)
-  @Matches(/^[a-zA-Z0-9]*$/, {
+  @validator.MinLength(8)
+  @validator.MaxLength(16)
+  @validator.Matches(/^[a-zA-Z0-9]*$/, {
     message: 'Password must be alphanumeric',
   })
   pass: string;

@@ -1,27 +1,27 @@
 import { Role } from 'src/enum/user-type.enum';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import * as typeOrm from 'typeorm';
 
-@Entity({ name: 'users' })
+@typeOrm.Entity({ name: 'users' })
 export class User {
-  @PrimaryGeneratedColumn()
+  @typeOrm.PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @typeOrm.Column()
   email: string;
 
-  @Column()
+  @typeOrm.Column()
   firstName: string;
 
-  @Column()
+  @typeOrm.Column()
   lastName: string;
 
-  @Column()
+  @typeOrm.Column()
   pass: string;
 
-  @Column()
+  @typeOrm.Column()
   birthday: Date;
 
-  @Column({
+  @typeOrm.Column({
     type: 'enum',
     enum: Role,
     default: Role.USER

@@ -1,11 +1,11 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import * as nestCommon from '@nestjs/common';
 import { CorreosService } from './correos.service';
 
-@Controller('correos')
+@nestCommon.Controller('correos')
 export class CorreosController {
   constructor(private readonly correosService: CorreosService) {}
 
-  @Get()
+  @nestCommon.Get()
   sendMail(): void {
     return this.correosService.sendMail();
   }

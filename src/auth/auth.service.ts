@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import * as nestCommon from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { jwtConstants } from './constant';
-import { JwtPayload, jwtDecode } from 'jwt-decode';
+import * as jwtDecode from 'jwt-decode';
 import * as bcrypt from 'bcrypt';
 
-@Injectable()
+@nestCommon.Injectable()
 export class AuthService {
   constructor(
     private userService: UsersService,
@@ -17,9 +17,12 @@ export class AuthService {
     password: string,
   ): Promise<{ access_token: string }> {
     const user = await this.userService.getUser(email);
+    if(!user) {
+      return null;
+    }
     const isPasswordValid = await this.comparePasswords(password, user.pass);
     if (!isPasswordValid) {
-      throw new UnauthorizedException();
+      throw new nestCommon.UnauthorizedException();
     }
     const payload = { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, birthday: user.birthday, role: user.type};
 
@@ -55,8 +58,8 @@ export class AuthService {
   }
 
   decodeToken(t: string) {
-    const decodeT = jwtDecode<JwtPayload>(t).sub;
-    const decode = jwtDecode<JwtPayload>(t)
+    const decodeT = jwtDecode.jwtDecode<jwtDecode.JwtPayload>(t).sub;
+    const decode = jwtDecode.jwtDecode<jwtDecode.JwtPayload>(t)
     console.log(decodeT);
     console.log(decode);
     return decodeT;
