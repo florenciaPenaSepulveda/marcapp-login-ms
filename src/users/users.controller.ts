@@ -22,16 +22,18 @@ import { AuthService } from 'src/auth/auth.service';
 
 @Controller('users')
 export class UsersController {
-  authService: AuthService;
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private readonly authService: AuthService) {}
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
   @Post('/register')
   async createUser(@Body() newUser: CreateUserDto): Promise<User> | undefined {
     const user = await this.usersService.getUser(newUser.email);
-    console.log(JSON.stringify(user));
     if (!user) {
-      return this.usersService.createUser(newUser);
+      const hashedPassword = await this.authService.hashPassword(newUser.pass);
+      newUser.pass = hashedPassword;
+      return await this.usersService.createUser(newUser);
     } else {
       throw new ConflictException('El correo electrónico ya está registrado');
     }

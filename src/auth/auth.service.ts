@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 import { jwtConstants } from './constant';
 import { JwtPayload, jwtDecode } from 'jwt-decode';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +17,8 @@ export class AuthService {
     password: string,
   ): Promise<{ access_token: string }> {
     const user = await this.userService.getUser(email);
-    if (user?.pass != password) {
+    const isPasswordValid = await this.comparePasswords(password, user.pass);
+    if (!isPasswordValid) {
       throw new UnauthorizedException();
     }
     const payload = { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, birthday: user.birthday, role: user.type};
@@ -26,6 +28,18 @@ export class AuthService {
         secret: jwtConstants.secret,
       }),
     };
+  }
+
+  async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10);
+    console.log('pass', password);
+    console.log('hash', await bcrypt.hash(password, salt))
+    return  bcrypt.hash(password, salt);
+  }
+
+  // Método para comparar una contraseña con su hash
+  async comparePasswords(password: string, hashedPassword: string): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
   }
 
   verifyToken(t: string) {

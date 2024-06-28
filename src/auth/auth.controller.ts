@@ -46,8 +46,6 @@ export class AuthController {
     return true;
   }
   
-  
-  
   @Get(':t')
   async verToken(@Param('t') t: string): Promise<Boolean> {
     return this.authService.verifyToken(t);
