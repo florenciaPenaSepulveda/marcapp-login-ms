@@ -8,6 +8,8 @@ import {
   ConflictException,
   Patch,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UsersService } from './users.service';
@@ -15,34 +17,37 @@ import { User } from './user.entity';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Roles } from 'src/enum/roles.decorator';
 import { Role } from 'src/enum/user-type.enum';
-import { Admin } from 'typeorm';
 import { RolesGuard } from 'src/auth/guards/role.guard';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 import { AuthService } from 'src/auth/auth.service';
 
 @Controller('users')
 export class UsersController {
-  authService: AuthService;
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private readonly authService: AuthService) {}
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
   @Post('/register')
+  @UsePipes(new ValidationPipe())
   async createUser(@Body() newUser: CreateUserDto): Promise<User> | undefined {
     const user = await this.usersService.getUser(newUser.email);
-    console.log(JSON.stringify(user));
     if (!user) {
-      return this.usersService.createUser(newUser);
+      const hashedPassword = await this.authService.hashPassword(newUser.pass);
+      newUser.pass = hashedPassword;
+      return await this.usersService.createUser(newUser);
     } else {
       throw new ConflictException('El correo electrónico ya está registrado');
     }
   }
 
   @Patch('/:id')
+  @UsePipes(new ValidationPipe())
   async modifyUser(@Param('id') id: number, @Body() newValues: UpdateUserDto): Promise<User> {
     return this.usersService.updateUser(id, newValues); 
   }
 
-
+  //ENDPOINT SOLO UTILIZABLE EN POSTMAN, CREA ADMIN
   @Patch('/admin/role/:id')
   async addPrivileges(
     @Param('id') id: number,
@@ -57,7 +62,8 @@ export class UsersController {
     console.log(Role.ADMIN);
     return await this.usersService.getUsers();
   }
-
+  
+  //Endpoint para utilizar en POSTMAN, no se utiliza en la aplicación.
   @Get('/obtain/all') 
   async getAll(): Promise<User[]> {
     return await this.usersService.getUsers();
