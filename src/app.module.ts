@@ -8,8 +8,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { CorreosModule } from './correos/correos.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
-import { RolesGuard } from './auth/guards/role.guard';
+
 
 @Module({
   imports: [
