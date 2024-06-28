@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post,
+  Request,
   NotFoundException,
   ConflictException,
   Patch,
@@ -41,10 +42,12 @@ export class UsersController {
     }
   }
 
-  @Patch('/:id')
+  @UseGuards(AuthGuard)
   @UsePipes(new ValidationPipe())
-  async modifyUser(@Param('id') id: number, @Body() newValues: UpdateUserDto): Promise<User> {
-    return this.usersService.updateUser(id, newValues); 
+  @Patch()
+  async modifyUser(@Request() req, @Body() newValues: UpdateUserDto): Promise<User> {
+    console.log(req.user.id);
+    return this.usersService.updateUser(req.user.id, newValues); 
   }
 
   //ENDPOINT SOLO UTILIZABLE EN POSTMAN, CREA ADMIN
@@ -62,7 +65,7 @@ export class UsersController {
     console.log(Role.ADMIN);
     return await this.usersService.getUsers();
   }
-  
+
   //Endpoint para utilizar en POSTMAN, no se utiliza en la aplicación.
   @Get('/obtain/all') 
   async getAll(): Promise<User[]> {
