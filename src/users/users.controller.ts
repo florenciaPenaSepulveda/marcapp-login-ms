@@ -17,7 +17,6 @@ import { User } from './user.entity';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Roles } from 'src/enum/roles.decorator';
 import { Role } from 'src/enum/user-type.enum';
-import { Admin } from 'typeorm';
 import { RolesGuard } from 'src/auth/guards/role.guard';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
 import { AuthService } from 'src/auth/auth.service';
@@ -43,11 +42,12 @@ export class UsersController {
   }
 
   @Patch('/:id')
+  @UsePipes(new ValidationPipe())
   async modifyUser(@Param('id') id: number, @Body() newValues: UpdateUserDto): Promise<User> {
     return this.usersService.updateUser(id, newValues); 
   }
 
-
+  //ENDPOINT SOLO UTILIZABLE EN POSTMAN, CREA ADMIN
   @Patch('/admin/role/:id')
   async addPrivileges(
     @Param('id') id: number,
@@ -62,7 +62,8 @@ export class UsersController {
     console.log(Role.ADMIN);
     return await this.usersService.getUsers();
   }
-
+  
+  //Endpoint para utilizar en POSTMAN, no se utiliza en la aplicación.
   @Get('/obtain/all') 
   async getAll(): Promise<User[]> {
     return await this.usersService.getUsers();
