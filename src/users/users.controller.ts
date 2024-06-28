@@ -8,6 +8,8 @@ import {
   ConflictException,
   Patch,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UsersService } from './users.service';
@@ -28,6 +30,7 @@ export class UsersController {
 
   //Para poder ejecutarse el createUser debe recibir una petición Post
   @Post('/register')
+  @UsePipes(new ValidationPipe())
   async createUser(@Body() newUser: CreateUserDto): Promise<User> | undefined {
     const user = await this.usersService.getUser(newUser.email);
     if (!user) {

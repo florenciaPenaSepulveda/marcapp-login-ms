@@ -8,6 +8,8 @@ import {
   UseGuards,
   Request,
   Param,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
@@ -23,6 +25,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
+  @UsePipes(new ValidationPipe())
   async singIn(@Body() signInDto: SingInDto) {
     const token = await this.authService.signIn(
       signInDto.email,
