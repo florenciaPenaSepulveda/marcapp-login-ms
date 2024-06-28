@@ -17,6 +17,9 @@ export class AuthService {
     password: string,
   ): Promise<{ access_token: string }> {
     const user = await this.userService.getUser(email);
+    if(!user) {
+      return null;
+    }
     const isPasswordValid = await this.comparePasswords(password, user.pass);
     if (!isPasswordValid) {
       throw new nestCommon.UnauthorizedException();

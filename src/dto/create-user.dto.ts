@@ -7,7 +7,7 @@ export class CreateUserDto {
   @validator.IsString()
   @validator.MinLength(2)
   @validator.MaxLength(20)
-  @validator.Matches(/^[a-zA-Z]*$/, {
+  @validator.Matches(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/, {
     message: 'FirstName must be alphabetical',
   })
   firstName: string;
@@ -15,7 +15,7 @@ export class CreateUserDto {
   @validator.IsString()
   @validator.MinLength(2)
   @validator.MaxLength(20)
-  @validator.Matches(/^[a-zA-Z]*$/, {
+  @validator.Matches(/^[a-zA-Z]+(\s[a-zA-Z]+)?$/, {
     message: 'LastName must be alphabetical',
   })
   lastName: string;

@@ -16,5 +16,8 @@ export class UpdateUserDto {
     message: 'LastName must be alphabetical',
   })
   lastName: string;
+
+  @validator.IsEmail()
+  email: string;
 }
   
