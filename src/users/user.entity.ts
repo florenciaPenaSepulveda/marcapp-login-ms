@@ -18,9 +18,6 @@ export class User {
   @typeOrm.Column()
   pass: string;
 
-  @typeOrm.Column()
-  birthday: Date;
-
   @typeOrm.Column({
     type: 'enum',
     enum: Role,

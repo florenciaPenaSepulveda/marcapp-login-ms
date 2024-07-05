@@ -24,7 +24,7 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new nestCommon.UnauthorizedException();
     }
-    const payload = { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, birthday: user.birthday, role: user.type};
+    const payload = { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.type};
 
     return {
       access_token: await this.jwtService.signAsync(payload, {
@@ -43,25 +43,5 @@ export class AuthService {
   // Método para comparar una contraseña con su hash
   async comparePasswords(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword);
-  }
-
-  verifyToken(t: string) {
-    try {
-      console.log(t);
-      this.jwtService.verify(t, jwtConstants);
-      console.log('Buen token');
-      return true;
-    } catch (err) {
-      console.log('Mal token');
-      return false;
-    }
-  }
-
-  decodeToken(t: string) {
-    const decodeT = jwtDecode.jwtDecode<jwtDecode.JwtPayload>(t).sub;
-    const decode = jwtDecode.jwtDecode<jwtDecode.JwtPayload>(t)
-    console.log(decodeT);
-    console.log(decode);
-    return decodeT;
   }
 }

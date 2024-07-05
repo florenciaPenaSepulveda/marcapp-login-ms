@@ -4,8 +4,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { User } from './users/user.entity';
-import { MailerModule } from '@nestjs-modules/mailer';
-import { CorreosModule } from './correos/correos.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 
@@ -24,8 +22,6 @@ import { ConfigModule } from '@nestjs/config';
       synchronize: true,
     }),
     UsersModule,
-    //MailerModule,
-    //CorreosModule,
     AuthModule,
   ],
   controllers: [AppController],

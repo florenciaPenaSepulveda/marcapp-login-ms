@@ -2,7 +2,6 @@ import * as nestCommon from '@nestjs/common';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
-import { UpdateUserDto } from '../dto/update-user.dto';
 import { Roles } from 'src/enum/roles.decorator';
 import { Role } from 'src/enum/user-type.enum';
 import { RolesGuard } from 'src/auth/guards/role.guard';
@@ -29,14 +28,6 @@ export class UsersController {
     }
   }
 
-  @nestCommon.UseGuards(AuthGuard)
-  @nestCommon.UsePipes(new nestCommon.ValidationPipe())
-  @nestCommon.Patch()
-  async modifyUser(@nestCommon.Request() req, @nestCommon.Body() newValues: UpdateUserDto): Promise<User> {
-    console.log(req.user.id);
-    return this.usersService.updateUser(req.user.id, newValues); 
-  }
-
   //ENDPOINT SOLO UTILIZABLE EN POSTMAN, CREA ADMIN
   @nestCommon.Patch('/admin/role/:id')
   async addPrivileges(
@@ -59,16 +50,4 @@ export class UsersController {
     return await this.usersService.getUsers();
   }
 
-  @nestCommon.Get('/email/:email')
-  async getUser(@nestCommon.Param('email') email: string): Promise<User> {
-    const user = await this.usersService.getUser(email);
-    console.log(email);
-    console.log(JSON.stringify(user));
-    if (!user) {
-      throw new nestCommon.NotFoundException(
-        `Usuario con mail ${email} no fue encontrado`,
-      );
-    }
-    return user;
-  }
 }
