@@ -19,7 +19,7 @@ import { RolesGuard } from './auth/guards/role.guard';
       host: '127.0.0.1',
       port: 3306,
       username: 'root',
-      password: 'jmcr0612',
+      password: '1234',
       database: 'usersDB',
       entities: [User],
       synchronize: true,
