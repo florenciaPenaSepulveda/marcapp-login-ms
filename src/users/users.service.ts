@@ -1,47 +1,109 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from './user.entity';
 import { Repository } from 'typeorm';
+import { User } from './user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from 'src/enum/user-type.enum';
-//BIBLIOTECA QUE SE COMUNICA CON LA BASE DE DATOS PARA HACER OPERACIONES
-//Se hace la operación primero en Services, y luego la solicitud http en controller
+import { hashPassword } from 'src/auth/password';
+
+const CORREO_EN_USO = 'El correo electrónico ya está registrado';
+
+const esDuplicado = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  (error as { code?: string }).code === 'ER_DUP_ENTRY';
+
+const escaparLike = (texto: string): string => texto.replace(/[\\%_]/g, '\\$&');
+
 @Injectable()
 export class UsersService {
-  cambiarContraseña(idUsuario: number, nuevaContrasena: string) {
-    throw new Error('Method not implemented.');
-  }
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
   ) {}
 
-
-  async addPrivileges(id: number, role: Role) {
-    await this.userRepository.update(id, {type: role})
+  async createUser(dto: CreateUserDto): Promise<User> {
+    const pass = await hashPassword(dto.pass);
+    try {
+      const saved = await this.userRepository.save(
+        this.userRepository.create({ ...dto, pass }),
+      );
+      return await this.getUserById(saved.id);
+    } catch (error) {
+      if (esDuplicado(error)) {
+        throw new ConflictException(CORREO_EN_USO);
+      }
+      throw error;
+    }
   }
 
-  createUser(user: CreateUserDto) {
-    const newUser = this.userRepository.create(user);
-    return this.userRepository.save(newUser);
+  async createAdmin(dto: CreateUserDto): Promise<User> {
+    const user = await this.createUser(dto);
+    return this.addPrivileges(user.id, Role.ADMIN);
   }
 
-  getUsers() {
-    return this.userRepository.find();
+  getUsers(searchTerm?: string): Promise<User[]> {
+    const consulta = this.userRepository
+      .createQueryBuilder('user')
+      .orderBy('user.id', 'ASC');
+    if (searchTerm) {
+      consulta.where(
+        '(user.firstName LIKE :termino OR user.lastName LIKE :termino OR user.email LIKE :termino)',
+        { termino: `%${escaparLike(searchTerm)}%` },
+      );
+    }
+    return consulta.getMany();
   }
 
-  getUser(email: string) {
+  getUser(email: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: {
-        email: email,
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        birthday: true,
+        type: true,
+        pass: true,
       },
     });
   }
 
-  async getUserById(id: number) {
-    return this.userRepository.findOne({
-      where: {
-        id: id,
-      },
-    });
+  getUserById(id: number): Promise<User | null> {
+    return this.userRepository.findOne({ where: { id } });
+  }
+
+  countAdmins(): Promise<number> {
+    return this.userRepository.count({ where: { type: Role.ADMIN } });
+  }
+
+  async updateUser(id: number, dto: UpdateUserDto): Promise<User> {
+    if (!(await this.getUserById(id))) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    try {
+      if (Object.keys(dto).length > 0) {
+        await this.userRepository.update(id, dto);
+      }
+    } catch (error) {
+      if (esDuplicado(error)) {
+        throw new ConflictException(CORREO_EN_USO);
+      }
+      throw error;
+    }
+    return this.getUserById(id);
+  }
+
+  async addPrivileges(id: number, role: Role): Promise<User> {
+    if (!(await this.getUserById(id))) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    await this.userRepository.update(id, { type: role });
+    return this.getUserById(id);
   }
 }

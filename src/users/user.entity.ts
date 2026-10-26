@@ -6,22 +6,29 @@ export class User {
   @typeOrm.PrimaryGeneratedColumn()
   id: number;
 
-  @typeOrm.Column()
+  @typeOrm.Index({ unique: true })
+  @typeOrm.Column({ length: 254 })
   email: string;
 
-  @typeOrm.Column()
+  @typeOrm.Column({ length: 40 })
   firstName: string;
 
-  @typeOrm.Column()
+  @typeOrm.Column({ length: 40 })
   lastName: string;
 
-  @typeOrm.Column()
+  @typeOrm.Column({ length: 60, select: false })
   pass: string;
+
+  @typeOrm.Column({ type: 'date' })
+  birthday: string;
 
   @typeOrm.Column({
     type: 'enum',
     enum: Role,
-    default: Role.USER
+    default: Role.USER,
   })
   type: Role;
+
+  @typeOrm.CreateDateColumn()
+  createdAt: Date;
 }
