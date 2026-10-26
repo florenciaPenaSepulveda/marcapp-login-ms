@@ -250,7 +250,7 @@ describe('Marcapp login (e2e)', () => {
         .patch('/users/password')
         .set(auth)
         .send({ currentPassword: 'Incorrecta1', newPassword: 'Nueva12345' })
-        .expect(401);
+        .expect(400);
       await http()
         .patch('/users/password')
         .set(auth)

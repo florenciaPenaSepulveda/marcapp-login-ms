@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Role } from 'src/enum/user-type.enum';
@@ -165,7 +164,7 @@ describe('UsersService', () => {
       });
       await expect(
         servicio.changePassword(1, 'Otra12345', 'Nueva12345'),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      ).rejects.toThrow('Current password is incorrect');
       expect(repo.update).not.toHaveBeenCalled();
     });
 

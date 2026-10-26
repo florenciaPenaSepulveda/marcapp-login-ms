@@ -3,7 +3,6 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
@@ -149,7 +148,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
     if (!(await comparePasswords(currentPassword, user.pass))) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new BadRequestException('Current password is incorrect');
     }
     if (currentPassword === newPassword) {
       throw new BadRequestException('The new password must be different');
