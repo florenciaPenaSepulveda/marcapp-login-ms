@@ -47,9 +47,7 @@ export class UsersController {
     @Body() { role }: ChangeRoleDto,
   ) {
     if (req.user.id === id && role !== Role.ADMIN) {
-      throw new BadRequestException(
-        'No puedes quitarte el rol de administrador',
-      );
+      throw new BadRequestException('You cannot remove your own admin role');
     }
     return this.usersService.addPrivileges(id, role);
   }

@@ -81,7 +81,7 @@ describe('Marcapp login (e2e)', () => {
         .post('/users/register')
         .send(datos('repetido', { email: correo('REPETIDO') }))
         .expect(409);
-      expect(res.body.message).toMatch(/ya está registrado/);
+      expect(res.body.message).toMatch(/already registered/);
     });
 
     it('no permite elegir el rol ni otros campos al registrarse', async () => {

@@ -11,7 +11,7 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from 'src/enum/user-type.enum';
 import { hashPassword } from 'src/auth/password';
 
-const CORREO_EN_USO = 'El correo electrónico ya está registrado';
+const CORREO_EN_USO = 'Email already registered';
 
 const esDuplicado = (error: unknown): boolean =>
   typeof error === 'object' &&
@@ -84,7 +84,7 @@ export class UsersService {
 
   async updateUser(id: number, dto: UpdateUserDto): Promise<User> {
     if (!(await this.getUserById(id))) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException('User not found');
     }
     try {
       if (Object.keys(dto).length > 0) {
@@ -101,7 +101,7 @@ export class UsersService {
 
   async addPrivileges(id: number, role: Role): Promise<User> {
     if (!(await this.getUserById(id))) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException('User not found');
     }
     await this.userRepository.update(id, { type: role });
     return this.getUserById(id);
