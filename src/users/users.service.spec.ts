@@ -1,7 +1,12 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Role } from 'src/enum/user-type.enum';
-import { comparePasswords } from 'src/auth/password';
+import { comparePasswords, hashPassword } from 'src/auth/password';
 
 const dto = {
   email: 'ana@test.cl',
@@ -20,14 +25,28 @@ describe('UsersService', () => {
     count: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
-  let consulta: { orderBy: jest.Mock; where: jest.Mock; getMany: jest.Mock };
+  let consulta: {
+    orderBy: jest.Mock;
+    addOrderBy: jest.Mock;
+    take: jest.Mock;
+    skip: jest.Mock;
+    andWhere: jest.Mock;
+    where: jest.Mock;
+    getManyAndCount: jest.Mock;
+    getCount: jest.Mock;
+  };
   let servicio: UsersService;
 
   beforeEach(() => {
     consulta = {
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      getCount: jest.fn().mockResolvedValue(0),
     };
     repo = {
       create: jest.fn((datos) => datos),
@@ -67,14 +86,109 @@ describe('UsersService', () => {
     expect(repo.update).toHaveBeenCalledWith(5, { type: Role.ADMIN });
   });
 
-  it('lista sin filtro y con filtro escapando los comodines', async () => {
-    await servicio.getUsers();
-    expect(consulta.where).not.toHaveBeenCalled();
-    await servicio.getUsers('50%_a');
-    expect(consulta.where).toHaveBeenCalledWith(
-      expect.stringContaining('LIKE :termino'),
-      { termino: '%50\\%\\_a%' },
+  describe('listUsers', () => {
+    it('pagina con valores por defecto y devuelve el total', async () => {
+      consulta.getManyAndCount.mockResolvedValue([[{ id: 1 }], 41]);
+      const res = await servicio.listUsers({});
+      expect(res).toEqual({
+        items: [{ id: 1 }],
+        total: 41,
+        limit: 20,
+        offset: 0,
+      });
+      expect(consulta.take).toHaveBeenCalledWith(20);
+      expect(consulta.skip).toHaveBeenCalledWith(0);
+      expect(consulta.andWhere).not.toHaveBeenCalled();
+    });
+
+    it('filtra por rol y por texto escapando los comodines', async () => {
+      await servicio.listUsers({
+        role: Role.ADMIN,
+        search: '50%_a',
+        limit: 5,
+        offset: 10,
+      });
+      expect(consulta.andWhere).toHaveBeenCalledWith('user.type = :role', {
+        role: Role.ADMIN,
+      });
+      const grupo = consulta.andWhere.mock.calls[1][0];
+      const termino: string[] = [];
+      const constructor = {
+        where: jest.fn((_sql, parametros) => {
+          termino.push(parametros.termino);
+          return constructor;
+        }),
+        orWhere: jest.fn((_sql, parametros) => {
+          termino.push(parametros.termino);
+          return constructor;
+        }),
+      };
+      grupo.whereFactory(constructor);
+      expect(termino).toEqual(['%50\\%\\_a%', '%50\\%\\_a%', '%50\\%\\_a%']);
+      expect(consulta.take).toHaveBeenCalledWith(5);
+      expect(consulta.skip).toHaveBeenCalledWith(10);
+    });
+  });
+
+  it('getUserOrFail falla si el usuario no existe', async () => {
+    repo.findOne.mockResolvedValue(null);
+    await expect(servicio.getUserOrFail(3)).rejects.toBeInstanceOf(
+      NotFoundException,
     );
+    repo.findOne.mockResolvedValue({ id: 3 });
+    await expect(servicio.getUserOrFail(3)).resolves.toEqual({ id: 3 });
+  });
+
+  it('calcula las estadísticas de usuarios', async () => {
+    repo.count.mockResolvedValueOnce(10).mockResolvedValueOnce(2);
+    consulta.getCount.mockResolvedValue(3);
+    await expect(servicio.getStats()).resolves.toEqual({
+      total: 10,
+      admins: 2,
+      workers: 8,
+      newThisMonth: 3,
+    });
+  });
+
+  describe('changePassword', () => {
+    it('falla si el usuario no existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(servicio.changePassword(1, 'a', 'b')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('exige la contraseña actual correcta', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 1,
+        pass: await hashPassword('Actual12345'),
+      });
+      await expect(
+        servicio.changePassword(1, 'Otra12345', 'Nueva12345'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza una nueva contraseña igual a la actual', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 1,
+        pass: await hashPassword('Actual12345'),
+      });
+      await expect(
+        servicio.changePassword(1, 'Actual12345', 'Actual12345'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('guarda la nueva contraseña como hash', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 1,
+        pass: await hashPassword('Actual12345'),
+      });
+      await servicio.changePassword(1, 'Actual12345', 'Nueva12345');
+      const { pass } = repo.update.mock.calls[0][1];
+      expect(pass).not.toBe('Nueva12345');
+      expect(await comparePasswords('Nueva12345', pass)).toBe(true);
+    });
   });
 
   it('busca por correo incluyendo el hash solo para el ingreso', async () => {

@@ -216,6 +216,67 @@ describe('Marcapp login (e2e)', () => {
     });
   });
 
+  describe('cambio de contraseña', () => {
+    const email = correo('clave');
+
+    beforeAll(async () => {
+      await http().post('/users/register').send(datos('clave')).expect(201);
+    });
+
+    it('exige autenticación y valida el cuerpo', async () => {
+      await http().patch('/users/password').send({}).expect(401);
+      const token = await ingresar(email);
+      const auth = { Authorization: `Bearer ${token}` };
+      await http().patch('/users/password').set(auth).send({}).expect(400);
+      await http()
+        .patch('/users/password')
+        .set(auth)
+        .send({ currentPassword: 'Clave12345', newPassword: 'corta' })
+        .expect(400);
+      await http()
+        .patch('/users/password')
+        .set(auth)
+        .send({
+          currentPassword: 'Clave12345',
+          newPassword: 'Nueva12345',
+          extra: 1,
+        })
+        .expect(400);
+    });
+
+    it('rechaza una contraseña actual incorrecta o una nueva igual', async () => {
+      const auth = { Authorization: `Bearer ${await ingresar(email)}` };
+      await http()
+        .patch('/users/password')
+        .set(auth)
+        .send({ currentPassword: 'Incorrecta1', newPassword: 'Nueva12345' })
+        .expect(401);
+      await http()
+        .patch('/users/password')
+        .set(auth)
+        .send({ currentPassword: 'Clave12345', newPassword: 'Clave12345' })
+        .expect(400);
+    });
+
+    it('cambia la contraseña y solo sirve la nueva', async () => {
+      const auth = { Authorization: `Bearer ${await ingresar(email)}` };
+      const res = await http()
+        .patch('/users/password')
+        .set(auth)
+        .send({ currentPassword: 'Clave12345', newPassword: 'Nueva12345' })
+        .expect(200);
+      expect(res.body).toEqual({ message: 'Password updated' });
+      await http()
+        .post('/auth/login')
+        .send({ email, pass: 'Clave12345' })
+        .expect(401);
+      await http()
+        .post('/auth/login')
+        .send({ email, pass: 'Nueva12345' })
+        .expect(200);
+    });
+  });
+
   describe('administración', () => {
     let tokenAdmin: string;
     let tokenUsuario: string;
@@ -239,7 +300,9 @@ describe('Marcapp login (e2e)', () => {
 
     it('los endpoints de administración ya no están abiertos', async () => {
       await http().get('/users/obtain/all').expect(404);
-      await http().post('/users/all').expect(401);
+      await http().get('/users').expect(401);
+      await http().get('/users/stats').expect(401);
+      await http().get(`/users/${idUsuario}`).expect(401);
       await http()
         .patch(`/users/admin/role/${idUsuario}`)
         .send({ role: 'admin' })
@@ -247,43 +310,87 @@ describe('Marcapp login (e2e)', () => {
     });
 
     it('un usuario común no puede listar ni cambiar roles', async () => {
-      await http()
-        .post('/users/all')
-        .set('Authorization', `Bearer ${tokenUsuario}`)
-        .send({})
-        .expect(403);
+      const auth = { Authorization: `Bearer ${tokenUsuario}` };
+      await http().get('/users').set(auth).expect(403);
+      await http().get('/users/stats').set(auth).expect(403);
+      await http().get(`/users/${idUsuario}`).set(auth).expect(403);
       await http()
         .patch(`/users/admin/role/${idUsuario}`)
-        .set('Authorization', `Bearer ${tokenUsuario}`)
+        .set(auth)
         .send({ role: 'admin' })
         .expect(403);
     });
 
-    it('el administrador lista usuarios sin contraseñas y puede filtrar', async () => {
-      const todos = await http()
-        .post('/users/all')
-        .set('Authorization', `Bearer ${tokenAdmin}`)
-        .send({})
-        .expect(201);
-      expect(todos.body.length).toBeGreaterThanOrEqual(2);
+    it('el administrador lista usuarios paginados, sin contraseñas, y puede filtrar', async () => {
+      const auth = { Authorization: `Bearer ${tokenAdmin}` };
+      const todos = await http().get('/users').set(auth).expect(200);
+      expect(todos.body.items.length).toBeGreaterThanOrEqual(2);
+      expect(todos.body.total).toBeGreaterThanOrEqual(todos.body.items.length);
+      expect(todos.body).toMatchObject({ limit: 20, offset: 0 });
       expect(JSON.stringify(todos.body)).not.toMatch(/"pass"/);
+
+      const pagina = await http()
+        .get('/users?limit=1&offset=1')
+        .set(auth)
+        .expect(200);
+      expect(pagina.body.items).toHaveLength(1);
+      expect(pagina.body.total).toBe(todos.body.total);
+
       const filtrado = await http()
-        .post('/users/all')
-        .set('Authorization', `Bearer ${tokenAdmin}`)
-        .send({ searchTerm: correo('comun').toUpperCase() })
-        .expect(201);
-      expect(filtrado.body.map((u: { email: string }) => u.email)).toEqual([
-        correo('comun'),
-      ]);
+        .get('/users')
+        .query({ search: correo('comun').toUpperCase() })
+        .set(auth)
+        .expect(200);
+      expect(
+        filtrado.body.items.map((u: { email: string }) => u.email),
+      ).toEqual([correo('comun')]);
+
+      const admins = await http()
+        .get('/users?role=admin&limit=100')
+        .set(auth)
+        .expect(200);
+      expect(
+        admins.body.items.every((u: { type: string }) => u.type === 'admin'),
+      ).toBe(true);
+    });
+
+    it('rechaza parámetros de listado inválidos', async () => {
+      const auth = { Authorization: `Bearer ${tokenAdmin}` };
+      await http().get('/users?limit=0').set(auth).expect(400);
+      await http().get('/users?limit=1000').set(auth).expect(400);
+      await http().get('/users?role=root').set(auth).expect(400);
+      await http().get('/users?offset=-1').set(auth).expect(400);
+      await http().get('/users?otro=1').set(auth).expect(400);
+    });
+
+    it('el administrador consulta un usuario por identificador', async () => {
+      const auth = { Authorization: `Bearer ${tokenAdmin}` };
+      const res = await http().get(`/users/${idUsuario}`).set(auth).expect(200);
+      expect(res.body).toMatchObject({ id: idUsuario, email: correo('comun') });
+      expect(res.body).not.toHaveProperty('pass');
+      await http().get('/users/999999').set(auth).expect(404);
+      await http().get('/users/abc').set(auth).expect(400);
+    });
+
+    it('entrega las estadísticas de usuarios', async () => {
+      const res = await http()
+        .get('/users/stats')
+        .set({ Authorization: `Bearer ${tokenAdmin}` })
+        .expect(200);
+      expect(res.body.total).toBeGreaterThanOrEqual(2);
+      expect(res.body.admins).toBeGreaterThanOrEqual(1);
+      expect(res.body.workers).toBe(res.body.total - res.body.admins);
+      expect(res.body.newThisMonth).toBeGreaterThanOrEqual(2);
     });
 
     it('el término de búsqueda no actúa como comodín ni como inyección', async () => {
       const res = await http()
-        .post('/users/all')
+        .get('/users')
+        .query({ search: "%' OR '1'='1" })
         .set('Authorization', `Bearer ${tokenAdmin}`)
-        .send({ searchTerm: "%' OR '1'='1" })
-        .expect(201);
-      expect(res.body).toEqual([]);
+        .expect(200);
+      expect(res.body.items).toEqual([]);
+      expect(res.body.total).toBe(0);
     });
 
     it('valida el rol y el identificador', async () => {
@@ -314,19 +421,17 @@ describe('Marcapp login (e2e)', () => {
         .expect(200);
       expect(res.body.type).toBe('admin');
       await http()
-        .post('/users/all')
+        .get('/users')
         .set('Authorization', `Bearer ${tokenUsuario}`)
-        .send({})
-        .expect(201);
+        .expect(200);
       await http()
         .patch(`/users/admin/role/${idUsuario}`)
         .set(auth)
         .send({ role: 'user' })
         .expect(200);
       await http()
-        .post('/users/all')
+        .get('/users')
         .set('Authorization', `Bearer ${tokenUsuario}`)
-        .send({})
         .expect(403);
     });
 

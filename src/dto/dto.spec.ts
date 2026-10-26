@@ -5,7 +5,8 @@ import { CreateUserDto } from './create-user.dto';
 import { UpdateUserDto } from './update-user.dto';
 import { SingInDto } from './sign-in.dto';
 import { ChangeRoleDto } from './change-role.dto';
-import { SearchUsersDto } from './search-users.dto';
+import { ListUsersQueryDto } from './list-users-query.dto';
+import { ChangePasswordDto } from './change-password.dto';
 import { esFechaNacimientoValida } from './birthday.validator';
 
 const errores = async (
@@ -92,17 +93,64 @@ describe('SingInDto', () => {
   });
 });
 
-describe('ChangeRoleDto y SearchUsersDto', () => {
+describe('ChangeRoleDto', () => {
   it('solo admite roles conocidos', async () => {
     expect(await errores(ChangeRoleDto, { role: 'admin' })).toEqual([]);
     expect(await errores(ChangeRoleDto, { role: 'root' })).toEqual(['role']);
   });
+});
 
-  it('el término de búsqueda es opcional y acotado', async () => {
-    expect(await errores(SearchUsersDto, {})).toEqual([]);
+describe('ListUsersQueryDto', () => {
+  it('todos los parámetros son opcionales y se convierten a número', async () => {
+    expect(await errores(ListUsersQueryDto, {})).toEqual([]);
+    const consulta = plainToInstance(ListUsersQueryDto, {
+      limit: '10',
+      offset: '5',
+      search: '  ana ',
+      role: 'user',
+    });
+    expect(consulta).toMatchObject({
+      limit: 10,
+      offset: 5,
+      search: 'ana',
+      role: 'user',
+    });
+    expect(await validate(consulta)).toHaveLength(0);
+  });
+
+  it.each([
+    ['limit', '0'],
+    ['limit', '101'],
+    ['offset', '-1'],
+    ['role', 'root'],
+    ['search', 'a'.repeat(61)],
+  ])('rechaza %s = %s', async (campo, valor) => {
+    expect(await errores(ListUsersQueryDto, { [campo]: valor })).toEqual([
+      campo,
+    ]);
+  });
+});
+
+describe('ChangePasswordDto', () => {
+  it('exige la clave actual y una nueva clave válida', async () => {
     expect(
-      await errores(SearchUsersDto, { searchTerm: 'a'.repeat(61) }),
-    ).toEqual(['searchTerm']);
+      await errores(ChangePasswordDto, {
+        currentPassword: 'x',
+        newPassword: 'Nueva12345',
+      }),
+    ).toEqual([]);
+    expect(
+      await errores(ChangePasswordDto, {
+        currentPassword: '',
+        newPassword: 'corta',
+      }),
+    ).toEqual(['currentPassword', 'newPassword']);
+    expect(
+      await errores(ChangePasswordDto, {
+        currentPassword: 'x',
+        newPassword: 'soloLetrasLargas',
+      }),
+    ).toEqual(['newPassword']);
   });
 });
 
