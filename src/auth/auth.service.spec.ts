@@ -14,6 +14,7 @@ describe('AuthService', () => {
     birthday: '1995-04-20',
     type: Role.USER,
     pass: 'hash-guardado',
+    tokenVersion: 2,
   };
   let users: { getUser: jest.Mock; getUserById: jest.Mock };
   let jwt: { signAsync: jest.Mock };
@@ -44,6 +45,7 @@ describe('AuthService', () => {
       lastName: 'Pérez',
       email: 'ana@test.cl',
       role: 'user',
+      v: 2,
     });
   });
 
@@ -85,6 +87,18 @@ describe('AuthService', () => {
       role: 'user',
     });
     expect(perfil).not.toHaveProperty('pass');
+  });
+
+  it('devuelve la sesión vigente con el rol actual', async () => {
+    users.getUserById.mockResolvedValue({ ...usuario, type: Role.ADMIN });
+    await expect(servicio.getSession(7)).resolves.toEqual({
+      id: 7,
+      role: 'admin',
+    });
+    users.getUserById.mockResolvedValue(null);
+    await expect(servicio.getSession(7)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('rechaza el perfil de un usuario eliminado', async () => {

@@ -15,11 +15,16 @@ const contexto = (request: Record<string, unknown>): ExecutionContext =>
 
 describe('AuthGuard', () => {
   let jwt: { verifyAsync: jest.Mock };
+  let users: { getTokenVersion: jest.Mock };
   let guard: AuthGuard;
 
   beforeEach(() => {
     jwt = { verifyAsync: jest.fn() };
-    guard = new AuthGuard(jwt as unknown as JwtService);
+    users = { getTokenVersion: jest.fn().mockResolvedValue(0) };
+    guard = new AuthGuard(
+      jwt as unknown as JwtService,
+      users as unknown as UsersService,
+    );
   });
 
   it.each([[undefined], ['Basic abc'], ['Bearer'], ['Bearer ']])(
@@ -42,13 +47,40 @@ describe('AuthGuard', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('acepta un token válido y deja los datos en la solicitud', async () => {
+  it('rechaza un token cuya versión de sesión ya no es la vigente', async () => {
+    jwt.verifyAsync.mockResolvedValue({ id: 3, role: 'user', v: 0 });
+    users.getTokenVersion.mockResolvedValue(1);
+    await expect(
+      guard.canActivate(
+        contexto({ headers: { authorization: 'Bearer viejo' } }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rechaza un token sin versión o de un usuario eliminado', async () => {
     jwt.verifyAsync.mockResolvedValue({ id: 3, role: 'user' });
+    await expect(
+      guard.canActivate(
+        contexto({ headers: { authorization: 'Bearer legado' } }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    jwt.verifyAsync.mockResolvedValue({ id: 3, role: 'user', v: 0 });
+    users.getTokenVersion.mockResolvedValue(null);
+    await expect(
+      guard.canActivate(
+        contexto({ headers: { authorization: 'Bearer borrado' } }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('acepta un token válido y deja los datos en la solicitud', async () => {
+    jwt.verifyAsync.mockResolvedValue({ id: 3, role: 'user', v: 0 });
     const request: Record<string, unknown> = {
       headers: { authorization: 'bearer bueno' },
     };
     await expect(guard.canActivate(contexto(request))).resolves.toBe(true);
-    expect(request.user).toEqual({ id: 3, role: 'user' });
+    expect(request.user).toEqual({ id: 3, role: 'user', v: 0 });
+    expect(users.getTokenVersion).toHaveBeenCalledWith(3);
     expect(jwt.verifyAsync).toHaveBeenCalledWith('bueno');
   });
 });

@@ -22,6 +22,7 @@ describe('UsersService', () => {
     update: jest.Mock;
     findOne: jest.Mock;
     count: jest.Mock;
+    delete?: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let consulta: {
@@ -178,6 +179,21 @@ describe('UsersService', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('sube la versión de sesión para invalidar los tokens anteriores', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 1,
+        pass: await hashPassword('Actual12345'),
+        tokenVersion: 3,
+      });
+      const user = await servicio.changePassword(
+        1,
+        'Actual12345',
+        'Nueva12345',
+      );
+      expect(repo.update.mock.calls[0][1].tokenVersion).toBe(4);
+      expect(user.tokenVersion).toBe(4);
+    });
+
     it('guarda la nueva contraseña como hash', async () => {
       repo.findOne.mockResolvedValue({
         id: 1,
@@ -251,6 +267,61 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue({ id: 9 });
       await servicio.addPrivileges(9, Role.ADMIN);
       expect(repo.update).toHaveBeenCalledWith(9, { type: Role.ADMIN });
+    });
+  });
+
+  describe('getTokenVersion', () => {
+    it('devuelve la versión del usuario o nulo si no existe', async () => {
+      repo.findOne.mockResolvedValue({ id: 4, tokenVersion: 6 });
+      await expect(servicio.getTokenVersion(4)).resolves.toBe(6);
+      repo.findOne.mockResolvedValue(null);
+      await expect(servicio.getTokenVersion(4)).resolves.toBeNull();
+    });
+
+    it('ignora identificadores que no son enteros sin consultar la base', async () => {
+      repo.findOne.mockClear();
+      await expect(servicio.getTokenVersion(undefined)).resolves.toBeNull();
+      await expect(servicio.getTokenVersion(NaN)).resolves.toBeNull();
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteUser', () => {
+    beforeEach(() => {
+      repo.delete = jest.fn();
+    });
+
+    it('no permite eliminar la propia cuenta', async () => {
+      await expect(servicio.deleteUser(3, 3)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('falla si el usuario no existe', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(servicio.deleteUser(9, 1)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('no permite eliminar al último administrador', async () => {
+      repo.findOne.mockResolvedValue({ id: 9, type: Role.ADMIN });
+      repo.count.mockResolvedValue(1);
+      await expect(servicio.deleteUser(9, 1)).rejects.toThrow(
+        /last administrator/,
+      );
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('elimina a un trabajador o a un administrador si quedan otros', async () => {
+      repo.findOne.mockResolvedValue({ id: 9, type: Role.USER });
+      await servicio.deleteUser(9, 1);
+      expect(repo.delete).toHaveBeenCalledWith(9);
+      repo.findOne.mockResolvedValue({ id: 8, type: Role.ADMIN });
+      repo.count.mockResolvedValue(2);
+      await servicio.deleteUser(8, 1);
+      expect(repo.delete).toHaveBeenCalledWith(8);
     });
   });
 });

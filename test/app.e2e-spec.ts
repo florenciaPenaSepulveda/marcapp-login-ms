@@ -8,6 +8,7 @@ import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { configurarApp } from './../src/app.setup';
 import { UsersService } from './../src/users/users.service';
+import { Role } from './../src/enum/user-type.enum';
 
 const sufijo = Date.now().toString(36);
 const correo = (nombre: string) => `${nombre}.${sufijo}@test.cl`;
@@ -258,14 +259,25 @@ describe('Marcapp login (e2e)', () => {
         .expect(400);
     });
 
-    it('cambia la contraseña y solo sirve la nueva', async () => {
-      const auth = { Authorization: `Bearer ${await ingresar(email)}` };
+    it('cambia la contraseña, invalida los tokens anteriores y entrega uno nuevo', async () => {
+      const tokenViejo = await ingresar(email);
+      const auth = { Authorization: `Bearer ${tokenViejo}` };
+      await http().get('/auth/session').set(auth).expect(200);
       const res = await http()
         .patch('/users/password')
         .set(auth)
         .send({ currentPassword: 'Clave12345', newPassword: 'Nueva12345' })
         .expect(200);
-      expect(res.body).toEqual({ message: 'Password updated' });
+      expect(res.body.message).toBe('Password updated');
+      expect(res.body.access_token).toEqual(expect.any(String));
+
+      await http().get('/auth/session').set(auth).expect(401);
+      await http().post('/auth/profile').set(auth).expect(401);
+      await http()
+        .get('/auth/session')
+        .set({ Authorization: `Bearer ${res.body.access_token}` })
+        .expect(200);
+
       await http()
         .post('/auth/login')
         .send({ email, pass: 'Clave12345' })
@@ -274,6 +286,46 @@ describe('Marcapp login (e2e)', () => {
         .post('/auth/login')
         .send({ email, pass: 'Nueva12345' })
         .expect(200);
+    });
+  });
+
+  describe('sesión vigente', () => {
+    it('exige un token válido', async () => {
+      await http().get('/auth/session').expect(401);
+      await http()
+        .get('/auth/session')
+        .set('Authorization', 'Bearer inventado')
+        .expect(401);
+    });
+
+    it('entrega el rol actual de la base de datos, no el del token', async () => {
+      await http()
+        .post('/users/register')
+        .send(datos('rolvigente'))
+        .expect(201);
+      const token = await ingresar(correo('rolvigente'));
+      const auth = { Authorization: `Bearer ${token}` };
+      const antes = await http().get('/auth/session').set(auth).expect(200);
+      expect(antes.body.role).toBe('user');
+      const usuario = await usuarios.getUser(correo('rolvigente'));
+      await usuarios.addPrivileges(usuario.id, Role.ADMIN);
+      const despues = await http().get('/auth/session').set(auth).expect(200);
+      expect(despues.body).toEqual({ id: usuario.id, role: 'admin' });
+    });
+
+    it('no se limita por tasa, porque lo consulta otro servicio con cada solicitud', async () => {
+      const token = await ingresar(correo('rolvigente'));
+      process.env.PROBAR_LIMITES = '1';
+      try {
+        for (let i = 0; i < 45; i++) {
+          await http()
+            .get('/auth/session')
+            .set({ Authorization: `Bearer ${token}` })
+            .expect(200);
+        }
+      } finally {
+        delete process.env.PROBAR_LIMITES;
+      }
     });
   });
 
@@ -435,12 +487,100 @@ describe('Marcapp login (e2e)', () => {
         .expect(403);
     });
 
+    it('POST /users/all sigue disponible como alias de compatibilidad', async () => {
+      const auth = { Authorization: `Bearer ${tokenAdmin}` };
+      await http().post('/users/all').send({}).expect(401);
+      await http()
+        .post('/users/all')
+        .set({ Authorization: `Bearer ${tokenUsuario}` })
+        .send({})
+        .expect(403);
+      const res = await http()
+        .post('/users/all')
+        .set(auth)
+        .send({ searchTerm: correo('comun').toUpperCase() })
+        .expect(201);
+      expect(res.body.map((u: { email: string }) => u.email)).toEqual([
+        correo('comun'),
+      ]);
+      expect(JSON.stringify(res.body)).not.toMatch(/"pass"/);
+      await http().post('/users/all').set(auth).send({ otro: 1 }).expect(400);
+    });
+
     it('un administrador no puede quitarse su propio rol', async () => {
       await http()
         .patch(`/users/admin/role/${idAdmin}`)
         .set('Authorization', `Bearer ${tokenAdmin}`)
         .send({ role: 'user' })
         .expect(400);
+    });
+  });
+
+  describe('eliminación de usuarios', () => {
+    let tokenAdmin: string;
+    let idAdmin: number;
+
+    beforeAll(async () => {
+      const admin = await usuarios.createAdmin({
+        ...datos('borrador'),
+        pass: 'Clave12345',
+      });
+      idAdmin = admin.id;
+      tokenAdmin = await ingresar(correo('borrador'));
+    });
+
+    it('exige rol de administrador', async () => {
+      const res = await http()
+        .post('/users/register')
+        .send(datos('victima1'))
+        .expect(201);
+      await http().delete(`/users/${res.body.id}`).expect(401);
+      const tokenComun = await ingresar(correo('victima1'));
+      await http()
+        .delete(`/users/${res.body.id}`)
+        .set({ Authorization: `Bearer ${tokenComun}` })
+        .expect(403);
+    });
+
+    it('valida el identificador y la existencia', async () => {
+      const auth = { Authorization: `Bearer ${tokenAdmin}` };
+      await http().delete('/users/abc').set(auth).expect(400);
+      await http().delete('/users/999999').set(auth).expect(404);
+    });
+
+    it('no permite eliminar la propia cuenta', async () => {
+      await http()
+        .delete(`/users/${idAdmin}`)
+        .set({ Authorization: `Bearer ${tokenAdmin}` })
+        .expect(400);
+    });
+
+    it('elimina al usuario: ya no puede ingresar y su token deja de valer', async () => {
+      const res = await http()
+        .post('/users/register')
+        .send(datos('victima2'))
+        .expect(201);
+      const tokenVictima = await ingresar(correo('victima2'));
+      await http()
+        .get('/auth/session')
+        .set({ Authorization: `Bearer ${tokenVictima}` })
+        .expect(200);
+      await http()
+        .delete(`/users/${res.body.id}`)
+        .set({ Authorization: `Bearer ${tokenAdmin}` })
+        .expect(200, { success: true });
+      await http()
+        .get('/auth/session')
+        .set({ Authorization: `Bearer ${tokenVictima}` })
+        .expect(401);
+      await http()
+        .post('/auth/login')
+        .send({ email: correo('victima2'), pass: 'Clave12345' })
+        .expect(401);
+      await http()
+        .get(`/users/${res.body.id}`)
+        .set({ Authorization: `Bearer ${tokenAdmin}` })
+        .expect(404);
     });
   });
 
