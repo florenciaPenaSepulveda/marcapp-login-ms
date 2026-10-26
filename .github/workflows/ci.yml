@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main, development, testing]
+  pull_request:
+
+jobs:
+  test:
+    name: Lint, compilación, pruebas y migraciones
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: ci-password
+          MYSQL_DATABASE: usersDB_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ci-password
+      DB_NAME: usersDB_mig
+      DB_NAME_TEST: usersDB_test
+      JWT_SECRET: secreto-solo-para-el-ci-con-mas-de-32-caracteres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Pruebas unitarias con cobertura
+        run: npm run test:cov
+
+      - name: Verificar que las migraciones reproducen el esquema
+        run: |
+          mysql -h 127.0.0.1 -uroot -pci-password -e "CREATE DATABASE usersDB_mig"
+          npm run migration:run
+          npm run migration:check
+
+      - name: Pruebas de integración
+        run: npm run test:e2e
+
+      - name: Auditoría de dependencias
+        run: npm audit --omit=dev --audit-level=high
