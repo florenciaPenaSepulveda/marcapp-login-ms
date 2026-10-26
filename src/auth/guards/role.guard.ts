@@ -15,7 +15,6 @@ export class RolesGuard implements CanActivate {
       const {id} = request.user;
       console.log('Usuario en role',request.user);
       const user = await this.userService.getUserById(id);
-      
       return requiredRoles.includes(user.type);
       
     }
