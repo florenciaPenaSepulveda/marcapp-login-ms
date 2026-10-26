@@ -1,15 +1,18 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { ListUsersQueryDto } from '../dto/list-users-query.dto';
 import { Role } from 'src/enum/user-type.enum';
-import { hashPassword } from 'src/auth/password';
+import { comparePasswords, hashPassword } from 'src/auth/password';
 
 const CORREO_EN_USO = 'Email already registered';
 
@@ -46,17 +49,30 @@ export class UsersService {
     return this.addPrivileges(user.id, Role.ADMIN);
   }
 
-  getUsers(searchTerm?: string): Promise<User[]> {
+  async listUsers({ search, role, limit = 20, offset = 0 }: ListUsersQueryDto) {
     const consulta = this.userRepository
       .createQueryBuilder('user')
-      .orderBy('user.id', 'ASC');
-    if (searchTerm) {
-      consulta.where(
-        '(user.firstName LIKE :termino OR user.lastName LIKE :termino OR user.email LIKE :termino)',
-        { termino: `%${escaparLike(searchTerm)}%` },
+      .orderBy('user.firstName', 'ASC')
+      .addOrderBy('user.lastName', 'ASC')
+      .addOrderBy('user.id', 'ASC')
+      .take(limit)
+      .skip(offset);
+    if (role) {
+      consulta.andWhere('user.type = :role', { role });
+    }
+    if (search) {
+      const termino = `%${escaparLike(search)}%`;
+      consulta.andWhere(
+        new Brackets((grupo) =>
+          grupo
+            .where('user.firstName LIKE :termino', { termino })
+            .orWhere('user.lastName LIKE :termino', { termino })
+            .orWhere('user.email LIKE :termino', { termino }),
+        ),
       );
     }
-    return consulta.getMany();
+    const [items, total] = await consulta.getManyAndCount();
+    return { items, total, limit, offset };
   }
 
   getUser(email: string): Promise<User | null> {
@@ -78,14 +94,35 @@ export class UsersService {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  async getUserOrFail(id: number): Promise<User> {
+    const user = await this.getUserById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
   countAdmins(): Promise<number> {
     return this.userRepository.count({ where: { type: Role.ADMIN } });
   }
 
+  async getStats() {
+    const inicioDeMes = new Date();
+    inicioDeMes.setDate(1);
+    inicioDeMes.setHours(0, 0, 0, 0);
+    const [total, admins, newThisMonth] = await Promise.all([
+      this.userRepository.count(),
+      this.countAdmins(),
+      this.userRepository
+        .createQueryBuilder('user')
+        .where('user.createdAt >= :inicioDeMes', { inicioDeMes })
+        .getCount(),
+    ]);
+    return { total, admins, workers: total - admins, newThisMonth };
+  }
+
   async updateUser(id: number, dto: UpdateUserDto): Promise<User> {
-    if (!(await this.getUserById(id))) {
-      throw new NotFoundException('User not found');
-    }
+    await this.getUserOrFail(id);
     try {
       if (Object.keys(dto).length > 0) {
         await this.userRepository.update(id, dto);
@@ -99,10 +136,31 @@ export class UsersService {
     return this.getUserById(id);
   }
 
-  async addPrivileges(id: number, role: Role): Promise<User> {
-    if (!(await this.getUserById(id))) {
+  async changePassword(
+    id: number,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: { id: true, pass: true },
+    });
+    if (!user) {
       throw new NotFoundException('User not found');
     }
+    if (!(await comparePasswords(currentPassword, user.pass))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('The new password must be different');
+    }
+    await this.userRepository.update(id, {
+      pass: await hashPassword(newPassword),
+    });
+  }
+
+  async addPrivileges(id: number, role: Role): Promise<User> {
+    await this.getUserOrFail(id);
     await this.userRepository.update(id, { type: role });
     return this.getUserById(id);
   }
