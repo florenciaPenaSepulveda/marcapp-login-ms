@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -20,6 +22,8 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { ChangeRoleDto } from '../dto/change-role.dto';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { ListUsersQueryDto } from '../dto/list-users-query.dto';
+import { LegacySearchDto } from '../dto/legacy-search.dto';
+import { crearPayload } from 'src/auth/token';
 import { Roles } from 'src/enum/roles.decorator';
 import { Role } from 'src/enum/user-type.enum';
 import { RolesGuard } from 'src/auth/guards/role.guard';
@@ -27,7 +31,10 @@ import { AuthGuard } from 'src/auth/guards/auth.guard';
 
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private jwtService: JwtService,
+  ) {}
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('/register')
@@ -46,12 +53,15 @@ export class UsersController {
   @UseGuards(AuthGuard)
   @Patch('/password')
   async changePassword(@Request() req, @Body() dto: ChangePasswordDto) {
-    await this.usersService.changePassword(
+    const user = await this.usersService.changePassword(
       req.user.id,
       dto.currentPassword,
       dto.newPassword,
     );
-    return { message: 'Password updated' };
+    return {
+      message: 'Password updated',
+      access_token: await this.jwtService.signAsync(crearPayload(user)),
+    };
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -59,6 +69,17 @@ export class UsersController {
   @Get()
   listUsers(@Query() query: ListUsersQueryDto) {
     return this.usersService.listUsers(query);
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post('/all')
+  async listUsersLegacy(@Body() { searchTerm }: LegacySearchDto) {
+    const { items } = await this.usersService.listUsers({
+      search: searchTerm,
+      limit: 100,
+    });
+    return items;
   }
 
   @UseGuards(AuthGuard, RolesGuard)
@@ -87,5 +108,13 @@ export class UsersController {
       throw new BadRequestException('You cannot remove your own admin role');
     }
     return this.usersService.addPrivileges(id, role);
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Delete('/:id')
+  async deleteUser(@Request() req, @Param('id', ParseIntPipe) id: number) {
+    await this.usersService.deleteUser(id, req.user.id);
+    return { success: true };
   }
 }

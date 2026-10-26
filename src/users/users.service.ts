@@ -85,12 +85,24 @@ export class UsersService {
         birthday: true,
         type: true,
         pass: true,
+        tokenVersion: true,
       },
     });
   }
 
   getUserById(id: number): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
+  }
+
+  async getTokenVersion(id: number): Promise<number | null> {
+    if (!Number.isInteger(id)) {
+      return null;
+    }
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: { id: true, tokenVersion: true },
+    });
+    return user ? user.tokenVersion : null;
   }
 
   async getUserOrFail(id: number): Promise<User> {
@@ -139,10 +151,19 @@ export class UsersService {
     id: number,
     currentPassword: string,
     newPassword: string,
-  ): Promise<void> {
+  ): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
-      select: { id: true, pass: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        birthday: true,
+        type: true,
+        pass: true,
+        tokenVersion: true,
+      },
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -153,9 +174,23 @@ export class UsersService {
     if (currentPassword === newPassword) {
       throw new BadRequestException('The new password must be different');
     }
+    const tokenVersion = user.tokenVersion + 1;
     await this.userRepository.update(id, {
       pass: await hashPassword(newPassword),
+      tokenVersion,
     });
+    return { ...user, tokenVersion };
+  }
+
+  async deleteUser(id: number, actorId: number): Promise<void> {
+    if (id === actorId) {
+      throw new BadRequestException('You cannot delete your own account');
+    }
+    const user = await this.getUserOrFail(id);
+    if (user.type === Role.ADMIN && (await this.countAdmins()) <= 1) {
+      throw new BadRequestException('You cannot delete the last administrator');
+    }
+    await this.userRepository.delete(id);
   }
 
   async addPrivileges(id: number, role: Role): Promise<User> {
