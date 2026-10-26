@@ -56,11 +56,14 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `POST /users/register` | Público | Crea una cuenta con rol `user` |
 | `POST /auth/login` | Público | Entrega `access_token` |
 | `POST /auth/profile` | Token | Perfil actualizado del usuario autenticado |
+| `GET /auth/session` | Token | Confirma que el token sigue vigente y devuelve `{ id, role }` con el rol actual de la base de datos; lo consulta `marcaje-ms` y no tiene límite de tasa |
 | `PATCH /users` | Token | Modifica nombre, apellido, correo o fecha de nacimiento propios |
-| `PATCH /users/password` | Token | Cambia la contraseña propia (`currentPassword` y `newPassword`) |
+| `PATCH /users/password` | Token | Cambia la contraseña propia (`currentPassword` y `newPassword`). Invalida todos los tokens anteriores y devuelve uno nuevo en `access_token` |
 | `GET /users` | Administrador | Lista paginada: `search`, `role`, `limit` (1-100, 20 por defecto) y `offset`; responde `{ items, total, limit, offset }` |
 | `GET /users/stats` | Administrador | Total de usuarios, administradores, trabajadores y altas del mes |
 | `GET /users/:id` | Administrador | Un usuario por identificador |
+| `DELETE /users/:id` | Administrador | Elimina un usuario; no permite eliminarse a sí mismo ni al último administrador |
+| `POST /users/all` | Administrador | **Obsoleto.** Alias de compatibilidad de `GET /users`: recibe `{ searchTerm }` y devuelve un arreglo de hasta 100 usuarios |
 | `PATCH /users/admin/role/:id` | Administrador | Cambia el rol de un usuario |
 
 El primer administrador se crea con `npm run seed:admin`; no existe ninguna ruta pública para asignar el rol.
@@ -74,7 +77,7 @@ El primer administrador se crea con `npm run seed:admin`; no existe ninguna ruta
 - Las rutas de administración exigen token y consultan el rol vigente en la base de datos, de modo que un cambio de rol rige de inmediato.
 - Límite de solicitudes por IP y límite más estricto en ingreso y registro; cabeceras de seguridad con helmet; CORS restringido.
 - Un administrador no puede quitarse a sí mismo el rol, para evitar quedarse sin administradores.
-- Los tokens se firman con HS256, se verifican con el mismo algoritmo y vencen a las 2 horas.
+- Los tokens se firman con HS256, se verifican con el mismo algoritmo y vencen a las 2 horas. Cada token lleva la versión de sesión del usuario: al cambiar la contraseña la versión sube y los tokens anteriores dejan de valer de inmediato; lo mismo ocurre al eliminar al usuario.
 
 ## Base de datos y migraciones
 
