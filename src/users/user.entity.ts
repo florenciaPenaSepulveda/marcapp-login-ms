@@ -29,6 +29,9 @@ export class User {
   })
   type: Role;
 
+  @typeOrm.Column({ type: 'int', default: 0, select: false })
+  tokenVersion: number;
+
   @typeOrm.CreateDateColumn()
   createdAt: Date;
 }

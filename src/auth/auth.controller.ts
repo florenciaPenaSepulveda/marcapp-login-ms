@@ -1,13 +1,14 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { SingInDto } from 'src/dto/sign-in.dto';
@@ -21,6 +22,13 @@ export class AuthController {
   @Post('login')
   singIn(@Body() signInDto: SingInDto) {
     return this.authService.signIn(signInDto.email, signInDto.pass);
+  }
+
+  @SkipThrottle()
+  @UseGuards(AuthGuard)
+  @Get('session')
+  getSession(@Request() req) {
+    return this.authService.getSession(req.user.id);
   }
 
   @UseGuards(AuthGuard)
