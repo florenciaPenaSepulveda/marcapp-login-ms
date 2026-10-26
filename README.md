@@ -57,7 +57,10 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `POST /auth/login` | Público | Entrega `access_token` |
 | `POST /auth/profile` | Token | Perfil actualizado del usuario autenticado |
 | `PATCH /users` | Token | Modifica nombre, apellido, correo o fecha de nacimiento propios |
-| `POST /users/all` | Administrador | Lista usuarios, con `searchTerm` opcional |
+| `PATCH /users/password` | Token | Cambia la contraseña propia (`currentPassword` y `newPassword`) |
+| `GET /users` | Administrador | Lista paginada: `search`, `role`, `limit` (1-100, 20 por defecto) y `offset`; responde `{ items, total, limit, offset }` |
+| `GET /users/stats` | Administrador | Total de usuarios, administradores, trabajadores y altas del mes |
+| `GET /users/:id` | Administrador | Un usuario por identificador |
 | `PATCH /users/admin/role/:id` | Administrador | Cambia el rol de un usuario |
 
 El primer administrador se crea con `npm run seed:admin`; no existe ninguna ruta pública para asignar el rol.
