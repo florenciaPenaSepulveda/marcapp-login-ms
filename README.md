@@ -4,6 +4,16 @@
 
 Microservicio de usuarios y autenticación de **Marcapp**, una aplicación de control de asistencia (marcaje de entrada y salida con ubicación) para empresas. Emite los tokens JWT que también validan los demás servicios.
 
+## Inicio rápido
+
+```
+cp .env.example .env     # completa DB_PASSWORD y JWT_SECRET
+npm ci && npm run migration:run && npm run seed:admin
+npm run start:dev
+```
+
+Necesitas Node.js 24 y MySQL 8. Pruebas: 79 con 98 % de cobertura (`npm run test:cov`).
+
 ## Repositorios del proyecto
 
 | Repositorio | Descripción |
